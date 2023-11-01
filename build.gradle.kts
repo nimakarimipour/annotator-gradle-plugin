@@ -9,8 +9,8 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint") version "11.0.0"
     id("org.nosphere.gradle.github.actions") version "1.3.2"
 }
-
 group = "net.ltgt.gradle"
+version = "0.0.1"
 
 // Make sure Gradle Module Metadata targets the appropriate JVM version
 tasks.withType<JavaCompile>().configureEach {
@@ -21,9 +21,9 @@ kotlinDslPluginOptions {
     experimentalWarning.set(false)
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions.allWarningsAsErrors = true
-}
+//tasks.withType<KotlinCompile>().configureEach {
+//    kotlinOptions.allWarningsAsErrors = true
+//}
 
 gradle.taskGraph.whenReady {
     if (hasTask(":publishPlugins")) {
@@ -63,6 +63,7 @@ dependencies {
     testImplementation("com.google.errorprone:error_prone_check_api:$errorproneVersion") {
         exclude(group = "com.google.errorprone", module = "javac")
     }
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
 
     additionalPluginClasspath("net.ltgt.gradle:gradle-errorprone-plugin:$errorpronePluginVersion")
 }
@@ -97,20 +98,20 @@ tasks {
 
 gradlePlugin {
     plugins {
-        register("nullaway") {
-            id = "net.ltgt.nullaway"
-            displayName = "Adds NullAway DSL to Gradle Error Prone plugin"
-            description = "Adds NullAway DSL to Gradle Error Prone plugin"
-            implementationClass = "net.ltgt.gradle.nullaway.NullAwayPlugin"
+        register("annotator") {
+            id = "edu.ucr.cs.riple.annotator.plugin"
+            displayName = "Adds AnnotatorScanner DSL to Gradle Error Prone plugin"
+            description = "Adds AnnotatorScanner DSL to Gradle Error Prone plugin"
+            implementationClass = "edu.ucr.cs.riple.annotator.gradle.plugin.AnnotatorPlugin"
         }
     }
 }
 
-pluginBundle {
-    website = "https://github.com/tbroyer/gradle-nullaway-plugin"
-    vcsUrl = "https://github.com/tbroyer/gradle-nullaway-plugin"
-    tags = listOf("javac", "error-prone", "nullaway", "nullability")
-}
+//pluginBundle {
+//    website = "https://github.com/tbroyer/gradle-nullaway-plugin"
+//    vcsUrl = "https://github.com/tbroyer/gradle-nullaway-plugin"
+//    tags = listOf("javac", "error-prone", "nullaway", "nullability")
+//}
 
 ktlint {
     version.set("0.45.2")

@@ -24,50 +24,91 @@
 
 package edu.ucr.cs.riple.annotator.gradle.plugin
 
+import CleanAnnotator
+import CleanOut
+import RunAnnotator
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.ErrorProneOptions
 import net.ltgt.gradle.errorprone.ErrorPronePlugin
 import net.ltgt.gradle.errorprone.errorprone
+
 import org.gradle.api.Action
-import org.gradle.api.Named
+import org.gradle.api.DefaultTask
+
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.Nested
-import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.TaskAction
+
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.kotlin.dsl.create
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.withType
-import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.util.GradleVersion
 
+
+//Name of the extension
 private const val EXTENSION_NAME = "annotator"
+
+//Version of the annotator-scanner library to add to the target project
+private const val ANNOTATOR_SCANNER_VERSION = "edu.ucr.cs.riple.annotator:annotator-scanner:1.3.8"
+
+/**
+ * The Annotator plugin.
+ *
+ * This plugin adds the annotator-scanner library to the target project and configures the ErrorProne plugin to use
+ * the AnnotatorScanner check.
+ */
 
 class AnnotatorPlugin : Plugin<Project> {
 
     companion object {
-        const val PLUGIN_ID = "edu.ucr.cs.riple.annotator.gradle.plugin"
+        const val PLUGIN_ID = "edu.ucr.cs.riple.annotator.plugin"
     }
 
     @Override
-    override fun apply(project: Project) = with(project) {
+    override fun apply(project: Project): Unit = with(project) {
+        logger.debug("ADDING ANNOTATOR TO TARGET")
         if (GradleVersion.current() < GradleVersion.version("5.2.1")) {
             throw UnsupportedOperationException("$PLUGIN_ID requires at least Gradle 5.2.1")
         }
 
         val extension = extensions.create(EXTENSION_NAME, AnnotatorExtension::class)
 
+        // Add the annotator-scanner library to the target project
+        dependencies.add("annotationProcessor", ANNOTATOR_SCANNER_VERSION)
+
+        // Configure the ErrorProne plugin to use the AnnotatorScanner check
         pluginManager.withPlugin(ErrorPronePlugin.PLUGIN_ID) {
             tasks.withType<JavaCompile>().configureEach {
+                //  Get all supplied options
                 val annotatorOptions = (options.errorprone as ExtensionAware).extensions.create(
                     EXTENSION_NAME,
-                    AnnotatorExtension::class,
+                    AnnotatorOptions::class,
                     extension
                 )
+                annotatorOptions.asArguments().forEach{
+                    println("OPTION:$it")
+                }
+                if(!name.toLowerCase().contains("test")){
+//                  task 1  refactor to remove the addition of compile time flags, to the RunAnnotator task, this way
+                    //                  the compilaltions requested by Annotator are the only places we inject these flags, per run of the Annotator.
+
+                    options.errorprone {
+                        check("AnnotatorScanner", CheckSeverity.ERROR)
+                        option("NullAway:SerializeFixMetadata", "true")
+                        //need to make this more dynamic, extend the options object to include the path to the scanner.xml file by default
+                        option("NullAway:FixSerializationConfigPath", project.projectDir.absolutePath + "/build/annotator/nullaway.xml")
+                        option("AnnotatorScanner:ConfigPath", project.projectDir.absolutePath + "/build/annotator/scanner.xml")
+                    }
+                }
 
             }
         }
+        tasks.register("runAnnotator", RunAnnotator::class.java)
+        tasks.register("cleanAnnotator", CleanAnnotator::class.java)
+        tasks.register("cleanAnnotatorOuts", CleanOut::class.java)
+
     }
 }
 
